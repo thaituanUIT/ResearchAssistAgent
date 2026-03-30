@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+langgraph
+langgraph-checkpoint
+langchain
+langchain-groq
+langchain-core
+pypdf
+python-multipart
+langchain-text-splitters
