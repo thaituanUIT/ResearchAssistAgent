@@ -23,15 +23,13 @@ graph TD
     A[Planner] --> B[Condition Router]
     B -->|Simple| C[Reader]
     B -->|Complex| D[Comparator]
-    C --> E[Evaluator]
-    D --> E
+    C --> H[Synthesizer]
+    D --> E[Evaluator]
     E --> F[Confidence Check]
     F -->|Low Confidence| G[Retriever]
     F -->|High Confidence| H[Synthesizer]
     G --> H
 ```
-
-*(See `graph.md` for more details on the routing conditions)*
 
 ## Prerequisites
 
