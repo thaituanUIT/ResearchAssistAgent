@@ -15,9 +15,18 @@ class AgentState(TypedDict, total=False):
     confidence_level: str
     retrieved_context: str
     synthesis: str
+    user_prompt: str
+    chat_history: List[dict]
+    chat_response: str
 
 # Use mixtral for its larger 32k context window on Groq
 llm = ChatGroq(model="mixtral-8x7b-32768")
+
+def input_router(state: AgentState):
+    """Routes to prompt_analyzer if user_prompt exists, else to planner."""
+    if state.get("user_prompt"):
+        return "prompt_analyzer"
+    return "planner"
 
 def planner_node(state: AgentState):
     """Determines whether the input is simple or complex."""
@@ -115,6 +124,33 @@ def synthesizer_node(state: AgentState):
     })
     return {"synthesis": response.content}
 
+def prompt_analyzer(state: AgentState):
+    """Analyzes the user prompt using document context and chat history."""
+    user_prompt = state.get("user_prompt", "")
+    chat_history = state.get("chat_history", [])
+    working_document = state.get("working_document", "")
+    synthesis = state.get("synthesis", "")
+    
+    # Format chat history
+    history_text = ""
+    for msg in chat_history:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        history_text += f"{role.capitalize()}: {content}\n"
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are a helpful research assistant named ResearchAssist. Answer the user's question based on the provided document context and the previous synthesis.\n\nContext:\n{working_document}\n\nSynthesis:\n{synthesis}\n\nChat History:\n{history_text}"),
+        ("human", "{user_prompt}")
+    ])
+    chain = prompt | llm
+    response = chain.invoke({
+        "working_document": working_document,
+        "synthesis": synthesis,
+        "history_text": history_text,
+        "user_prompt": user_prompt
+    })
+    return {"chat_response": response.content}
+
 workflow = StateGraph(AgentState)
 workflow.add_node("planner", planner_node)
 workflow.add_node("reader", reader_node)
@@ -122,8 +158,12 @@ workflow.add_node("comparator", comparator_node)
 workflow.add_node("evaluator", evaluator_node)
 workflow.add_node("retriever", retriever_node)
 workflow.add_node("synthesizer", synthesizer_node)
+workflow.add_node("prompt_analyzer", prompt_analyzer)
 
-workflow.add_edge(START, "planner")
+workflow.add_conditional_edges(START, input_router, {
+    "planner": "planner",
+    "prompt_analyzer": "prompt_analyzer"
+})
 workflow.add_conditional_edges("planner", route_analyzer, {
     "reader": "reader",
     "comparator": "comparator"
@@ -136,5 +176,6 @@ workflow.add_conditional_edges("evaluator", check_confidence, {
 })
 workflow.add_edge("retriever", "synthesizer")
 workflow.add_edge("synthesizer", END)
+workflow.add_edge("prompt_analyzer", END)
 
 app_graph = workflow.compile()

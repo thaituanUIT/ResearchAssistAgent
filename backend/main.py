@@ -1,10 +1,18 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from backend.pdf_utils import extract_text_from_pdf
 from backend.agent import app_graph
 import uvicorn
 import os
 from typing import Dict, Any, List
+
+
+class ChatRequest(BaseModel):
+    user_prompt: str
+    chat_history: List[Dict[str, str]] = []
+    working_document: str = ""
+    synthesis: str = ""
 
 app = FastAPI(title="ResearchAssist API")
 
@@ -50,10 +58,26 @@ async def upload_pdf(files: List[UploadFile] = File(...)):
             "route": result.get("route", ""),
             "confidence_level": result.get("confidence_level", ""),
             "retrieved_context": result.get("retrieved_context", ""),
-            "synthesis": result.get("synthesis", "")
+            "synthesis": result.get("synthesis", ""),
+            "working_document": result.get("working_document", "")
         }
     except Exception as e:
         print(f"Error during processing: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/chat")
+async def chat_endpoint(req: ChatRequest):
+    try:
+        initial_state = {
+            "user_prompt": req.user_prompt,
+            "chat_history": req.chat_history,
+            "working_document": req.working_document,
+            "synthesis": req.synthesis
+        }
+        result = app_graph.invoke(initial_state)
+        return {"chat_response": result.get("chat_response", "")}
+    except Exception as e:
+        print(f"Error during chat: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
