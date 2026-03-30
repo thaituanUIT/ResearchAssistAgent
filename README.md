@@ -35,7 +35,7 @@ graph TD
 
 - **Node.js** (v18+ recommended)
 - **Python** (3.9+)
-- **Groq API Key**: LLM inference is powered by `langchain-groq`.
+- **Groq LLM**: LLM inference is powered by `langchain-groq`.
 
 ## Getting Started
 
