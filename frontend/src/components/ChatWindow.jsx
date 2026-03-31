@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 import { MessageSquare } from 'lucide-react';
 import Mermaid from './Mermaid';
 
@@ -33,6 +34,7 @@ const ChatWindow = ({ messages, isChatting }) => {
                 <div className="markdown-body">
                   {msg.role === 'agent' ? (
                     <ReactMarkdown
+                      rehypePlugins={[rehypeRaw]}
                       components={{
                         code({ node, inline, className, children, ...props }) {
                           const match = /language-(\w+)/.exec(className || '');

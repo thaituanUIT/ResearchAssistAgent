@@ -7,6 +7,8 @@ import dotenv
 from backend.flowchart_agent import flowchart_graph
 from backend.vector_store import retrieve_relevant_context
 from langchain_core.tools import tool
+from pydantic import BaseModel, Field
+from backend.tools import search_scholar_api
 
 dotenv.load_dotenv()
 
@@ -32,9 +34,26 @@ def request_flowchart(instruction: str, text_to_analyze: str) -> str:
     return res.get("mermaid_graph", "")
 
 def input_router(state: AgentState):
-    """Routes to planner if new pdfs are provided, else prompt_analyzer for chat."""
+    """Routes to planner if new pdfs are provided, else prompt_analyzer or searcher for chat."""
     if state.get("paper_metadata"):
         return "planner"
+        
+    user_prompt = state.get("user_prompt", "")
+    sys_msg = "You are a routing assistant. Analyze the user prompt. If the user is asking to search for NEW external academic papers (e.g. 'search google scholar', 'find me papers on', 'retrieve recent papers'), output 'searcher'. Otherwise, if they are asking questions about existing documents or general chat, output 'prompt_analyzer'. Only output the exact string."
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", sys_msg),
+        ("human", "{user_prompt}")
+    ])
+    
+    try:
+        response = (prompt | llm).invoke({"user_prompt": user_prompt})
+        route = response.content.strip().replace("'", "").lower()
+        if "searcher" in route:
+            return "searcher"
+    except:
+        pass
+        
     return "prompt_analyzer"
 
 def planner_node(state: AgentState):
@@ -202,6 +221,30 @@ def prompt_analyzer(state: AgentState):
                 
     return {"chat_response": content}
 
+class SearchCriteria(BaseModel):
+    query: str = Field(description="The exact search string to query Google Scholar based on the user's prompt.")
+    scisbd: str = Field(description="Sort algorithm. Output '1' if the user requested the most recent/up to date papers. Output '0' if the user requested the most cited or most relevant papers, or if no preference was given.")
+
+def searcher_node(state: AgentState):
+    """Parses criteria from chat and calls SerpAPI Google Scholar."""
+    user_prompt = state.get("user_prompt", "")
+    
+    sys_msg = "You are an expert Search Criteria Extractor. Analyze the user prompt to determine the exact query string and the sorting algorithm needed for a Google Scholar search."
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", sys_msg),
+        ("human", "{user_prompt}")
+    ])
+    
+    chain = prompt | llm.with_structured_output(SearchCriteria)
+    
+    try:
+        criteria = chain.invoke({"user_prompt": user_prompt})
+        results_markdown = search_scholar_api(criteria.query, criteria.scisbd)
+        return {"chat_response": results_markdown}
+    except Exception as e:
+        return {"chat_response": f"**Error parsing search criteria or calling API:** {e}"}
+
 workflow = StateGraph(AgentState)
 workflow.add_node("planner", planner_node)
 workflow.add_node("reader", reader_node)
@@ -210,10 +253,12 @@ workflow.add_node("evaluator", evaluator_node)
 workflow.add_node("retriever", retriever_node)
 workflow.add_node("synthesizer", synthesizer_node)
 workflow.add_node("prompt_analyzer", prompt_analyzer)
+workflow.add_node("searcher", searcher_node)
 
 workflow.add_conditional_edges(START, input_router, {
     "planner": "planner",
-    "prompt_analyzer": "prompt_analyzer"
+    "prompt_analyzer": "prompt_analyzer",
+    "searcher": "searcher"
 })
 workflow.add_conditional_edges("planner", route_analyzer, {
     "reader": "reader",
@@ -228,5 +273,6 @@ workflow.add_conditional_edges("evaluator", check_confidence, {
 workflow.add_edge("retriever", "synthesizer")
 workflow.add_edge("synthesizer", END)
 workflow.add_edge("prompt_analyzer", END)
+workflow.add_edge("searcher", END)
 
 app_graph = workflow.compile()

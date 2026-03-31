@@ -468,3 +468,59 @@ body {
 @keyframes spin {
   100% { transform: rotate(360deg); }
 }
+
+/* Google Scholar Interactive Dropdowns */
+.scholar-dropdown {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.scholar-dropdown:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.scholar-dropdown summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text-primary);
+  outline: none;
+  display: flex;
+  align-items: center;
+  list-style: none; /* Hide default arrow */
+  font-size: 1.05rem;
+}
+
+.scholar-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.scholar-dropdown summary::before {
+  content: "▶";
+  font-size: 0.75rem;
+  margin-right: 12px;
+  color: var(--accent-primary);
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+
+.scholar-dropdown[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.scholar-dropdown a {
+  color: #a5b4fc;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.scholar-dropdown a:hover {
+  color: #d946ef;
+  text-decoration: underline;
+}
