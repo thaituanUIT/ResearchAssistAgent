@@ -31,6 +31,16 @@ graph TD
     G --> H
 ```
 
+Also, our Agent has a tool to generate flowchart from the paper.
+
+```mermaid
+graph TD
+A[User Prompt + Paper Text] --> B[Node Extractor]
+B --> C[Edge Extractor]
+C --> D[Mermaid Graph Generator]
+D --> E[Flowchart]
+```
+
 ## Prerequisites
 
 - **Node.js** (v18+ recommended)
