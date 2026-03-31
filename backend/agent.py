@@ -4,7 +4,8 @@ from langgraph.graph import StateGraph, START, END
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 import dotenv
-from backend.tools import generate_flowchart
+from backend.flowchart_agent import flowchart_graph
+from langchain_core.tools import tool
 
 dotenv.load_dotenv()
 
@@ -22,6 +23,12 @@ class AgentState(TypedDict, total=False):
 
 # Use mixtral for its larger 32k context window on Groq
 llm = ChatGroq(model="mixtral-8x7b-32768")
+
+@tool
+def request_flowchart(instruction: str, text_to_analyze: str) -> str:
+    """Builds a customized flowchart using a dedicated multi-agent pipeline based on the provided instruction and text context. Use this tool ONLY when the user asks for a flowchart, visual map, or diagram."""
+    res = flowchart_graph.invoke({"instruction": instruction, "context": text_to_analyze})
+    return res.get("mermaid_graph", "")
 
 def input_router(state: AgentState):
     """Routes to planner if new pdfs are provided, else prompt_analyzer for chat."""
@@ -49,20 +56,20 @@ def reader_node(state: AgentState):
     
     sys_msg = "You are an expert academic Reader. Summarize the following paper text concisely and highlight the main contributions, methodology, and results."
     if user_prompt:
-        sys_msg += f"\nThe user also gave this specific instruction: {user_prompt}\nIf the instruction asks for a flowchart, use your generate_flowchart tool."
+        sys_msg += f"\nThe user also gave this specific instruction: {user_prompt}\nIf the instruction asks for a flowchart, use your request_flowchart tool."
         
     prompt = ChatPromptTemplate.from_messages([
         ("system", sys_msg),
         ("human", "Paper text:\n{pdf_text}")
     ])
-    chain = prompt | llm.bind_tools([generate_flowchart])
+    chain = prompt | llm.bind_tools([request_flowchart])
     response = chain.invoke({"pdf_text": text_content})
     
     content = response.content or ""
     if response.tool_calls:
         for tc in response.tool_calls:
-            if tc["name"] == "generate_flowchart":
-                content += "\n\n" + generate_flowchart.invoke(tc["args"])
+            if tc["name"] == "request_flowchart":
+                content += "\n\n" + request_flowchart.invoke(tc["args"])
                 
     return {"working_document": content}
 
@@ -128,13 +135,13 @@ def synthesizer_node(state: AgentState):
     
     sys_msg = "You are a Synthesizer. Combine the Reader/Comparator's working document, the Evaluator's analysis, and any extra retrieved context into a final, well-structured markdown report suitable for a UI dashboard. Use headings, bullet points, and bold text to make it easy to read. Do not output raw JSON, only markdown."
     if user_prompt:
-        sys_msg += f"\nThe user also gave this instruction: {user_prompt}\nIf resolving this requires a flowchart, use your generate_flowchart tool."
+        sys_msg += f"\nThe user also gave this instruction: {user_prompt}\nIf resolving this requires a flowchart, use your request_flowchart tool."
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", sys_msg),
         ("human", "Working Document:\n{working_document}\n\nEvaluation:\n{evaluation}{context_instruction}")
     ])
-    chain = prompt | llm.bind_tools([generate_flowchart])
+    chain = prompt | llm.bind_tools([request_flowchart])
     response = chain.invoke({
         "working_document": working_document, 
         "evaluation": evaluation, 
@@ -144,8 +151,8 @@ def synthesizer_node(state: AgentState):
     content = response.content or ""
     if response.tool_calls:
         for tc in response.tool_calls:
-            if tc["name"] == "generate_flowchart":
-                content += "\n\n" + generate_flowchart.invoke(tc["args"])
+            if tc["name"] == "request_flowchart":
+                content += "\n\n" + request_flowchart.invoke(tc["args"])
                 
     return {"synthesis": content}
 
@@ -163,13 +170,13 @@ def prompt_analyzer(state: AgentState):
         content = msg.get("content", "")
         history_text += f"{role.capitalize()}: {content}\n"
     
-    sys_msg = "You are a helpful research assistant named ResearchAssist. Answer the user's question based on the provided document context and the previous synthesis.\nIf the user asks for a flowchart or visual diagram, use your generate_flowchart tool.\n\nContext:\n{working_document}\n\nSynthesis:\n{synthesis}\n\nChat History:\n{history_text}"
+    sys_msg = "You are a helpful research assistant named ResearchAssist. Answer the user's question based on the provided document context and the previous synthesis.\nIf the user asks for a flowchart or visual diagram, use your request_flowchart tool.\n\nContext:\n{working_document}\n\nSynthesis:\n{synthesis}\n\nChat History:\n{history_text}"
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", sys_msg),
         ("human", "{user_prompt}")
     ])
-    chain = prompt | llm.bind_tools([generate_flowchart])
+    chain = prompt | llm.bind_tools([request_flowchart])
     response = chain.invoke({
         "working_document": working_document,
         "synthesis": synthesis,
@@ -180,8 +187,8 @@ def prompt_analyzer(state: AgentState):
     content = response.content or ""
     if response.tool_calls:
         for tc in response.tool_calls:
-            if tc["name"] == "generate_flowchart":
-                content += "\n\n" + generate_flowchart.invoke(tc["args"])
+            if tc["name"] == "request_flowchart":
+                content += "\n\n" + request_flowchart.invoke(tc["args"])
                 
     return {"chat_response": content}
 
