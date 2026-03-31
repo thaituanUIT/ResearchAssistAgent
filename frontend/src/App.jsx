@@ -9,6 +9,7 @@ function App() {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [uploadInstruction, setUploadInstruction] = useState('');
   
   // Chat state
   const [messages, setMessages] = useState([]);
@@ -55,7 +56,7 @@ function App() {
     setMessages([]);
     
     try {
-      const data = await uploadPapers(files);
+      const data = await uploadPapers(files, uploadInstruction);
       setDocumentContext({
         working_document: data.working_document || '',
         synthesis: data.synthesis || ''
@@ -112,6 +113,8 @@ function App() {
         handleDrop={handleDrop}
         removeFile={removeFile}
         handleAnalyze={handleAnalyze}
+        uploadInstruction={uploadInstruction}
+        setUploadInstruction={setUploadInstruction}
       />
 
       <main className="main-content">

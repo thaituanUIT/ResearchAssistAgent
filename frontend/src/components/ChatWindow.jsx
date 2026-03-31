@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { MessageSquare } from 'lucide-react';
+import Mermaid from './Mermaid';
 
 const ChatWindow = ({ messages, isChatting }) => {
   const messagesEndRef = useRef(null);
@@ -30,7 +31,27 @@ const ChatWindow = ({ messages, isChatting }) => {
                   {msg.role === 'agent' ? 'ResearchAssist' : 'You'}
                 </div>
                 <div className="markdown-body">
-                  {msg.role === 'agent' ? <ReactMarkdown>{msg.content}</ReactMarkdown> : msg.content}
+                  {msg.role === 'agent' ? (
+                    <ReactMarkdown
+                      components={{
+                        code({ node, inline, className, children, ...props }) {
+                          const match = /language-(\w+)/.exec(className || '');
+                          if (!inline && match && match[1] === 'mermaid') {
+                            return <Mermaid chart={String(children).replace(/\n$/, '')} />;
+                          }
+                          return (
+                            <code className={className} {...props}>
+                              {children}
+                            </code>
+                          );
+                        }
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  ) : (
+                    msg.content
+                  )}
                 </div>
               </div>
             </div>

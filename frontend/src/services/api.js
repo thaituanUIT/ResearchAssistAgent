@@ -2,9 +2,10 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000';
 
-export const uploadPapers = async (files) => {
+export const uploadPapers = async (files, userPrompt = "") => {
   const formData = new FormData();
   files.forEach(file => formData.append('files', file));
+  formData.append('user_prompt', userPrompt);
   
   const response = await axios.post(`${API_BASE_URL}/upload`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }

@@ -29,7 +29,7 @@ def read_root():
     return {"message": "ResearchAssist API is running"}
 
 @app.post("/upload")
-async def upload_pdf(files: List[UploadFile] = File(...)):
+async def upload_pdf(files: List[UploadFile] = File(...), user_prompt: str = Form("")):
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
         
@@ -45,6 +45,7 @@ async def upload_pdf(files: List[UploadFile] = File(...)):
         # We start the graph
         initial_state = {
             "pdf_texts": pdf_texts, 
+            "user_prompt": user_prompt,
             "route": "",
             "working_document": "",
             "evaluation": "", 
