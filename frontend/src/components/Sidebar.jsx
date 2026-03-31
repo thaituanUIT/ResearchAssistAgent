@@ -58,7 +58,7 @@ const Sidebar = ({
         </div>
       )}
 
-      <div style={{ padding: '0 20px', marginBottom: '15px' }}>
+      <div style={{ display: 'none', padding: '0 20px', marginBottom: '15px' }}>
         <textarea 
           style={{ width: '100%', minHeight: '60px', borderRadius: '4px', padding: '8px', border: '1px solid #444', background: '#222', color: '#eee', fontSize: '13px', resize: 'vertical' }}
           placeholder="Optional: Ask to create a flowchart, compare methods, etc..."

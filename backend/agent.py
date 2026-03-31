@@ -5,12 +5,13 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 import dotenv
 from backend.flowchart_agent import flowchart_graph
+from backend.vector_store import retrieve_relevant_context
 from langchain_core.tools import tool
 
 dotenv.load_dotenv()
 
 class AgentState(TypedDict, total=False):
-    pdf_texts: List[str]
+    paper_metadata: List[dict]
     route: str
     working_document: str
     evaluation: str
@@ -32,14 +33,14 @@ def request_flowchart(instruction: str, text_to_analyze: str) -> str:
 
 def input_router(state: AgentState):
     """Routes to planner if new pdfs are provided, else prompt_analyzer for chat."""
-    if state.get("pdf_texts"):
+    if state.get("paper_metadata"):
         return "planner"
     return "prompt_analyzer"
 
 def planner_node(state: AgentState):
     """Determines whether the input is simple or complex."""
-    pdf_texts = state.get("pdf_texts", [])
-    route = "simple" if len(pdf_texts) == 1 else "complex"
+    paper_metadata = state.get("paper_metadata", [])
+    route = "simple" if len(paper_metadata) == 1 else "complex"
     return {"route": route}
 
 def route_analyzer(state: AgentState):
@@ -50,8 +51,16 @@ def route_analyzer(state: AgentState):
 
 def reader_node(state: AgentState):
     """Summarizes a single PDF text."""
-    pdf_texts = state.get("pdf_texts", [])
-    text_content = pdf_texts[0][:80000] if pdf_texts else ""
+    paper_metadata = state.get("paper_metadata", [])
+    if paper_metadata:
+        meta = paper_metadata[0]
+        text_content = retrieve_relevant_context(
+            "Abstract methodology contributions main results conclusion limitations", 
+            k=10, 
+            filter_dict={"paper_id": meta.get("paper_id")}
+        )
+    else:
+        text_content = ""
     user_prompt = state.get("user_prompt", "")
     
     sys_msg = "You are an expert academic Reader. Summarize the following paper text concisely and highlight the main contributions, methodology, and results."
@@ -75,17 +84,18 @@ def reader_node(state: AgentState):
 
 def comparator_node(state: AgentState):
     """Compares multiple PDF texts."""
-    pdf_texts = state.get("pdf_texts", [])
-    combined_texts = ""
-    for i, text in enumerate(pdf_texts):
-        combined_texts += f"--- Document {i+1} ---\n{text[:20000]}\n\n"
+    paper_metadata = state.get("paper_metadata", [])
+    text_content = retrieve_relevant_context(
+        "abstract method approach dataset methodology findings conclusion comparison", 
+        k=15
+    )
         
     prompt = ChatPromptTemplate.from_messages([
         ("system", "You are an expert academic Comparator. Compare the following papers, highlighting their commonalities, differences, methodologies, and overall impact."),
-        ("human", "Papers:\n{pdf_texts}")
+        ("human", "Papers Excerpts:\n{pdf_texts}")
     ])
     chain = prompt | llm
-    response = chain.invoke({"pdf_texts": combined_texts})
+    response = chain.invoke({"pdf_texts": text_content})
     return {"working_document": response.content}
 
 def evaluator_node(state: AgentState):
@@ -109,19 +119,15 @@ def check_confidence(state: AgentState):
 
 def retriever_node(state: AgentState):
     """Runs a second pass to retrieve missing context."""
-    pdf_texts = state.get("pdf_texts", [])
-    combined_texts = ""
-    for i, text in enumerate(pdf_texts):
-        combined_texts += f"--- Document {i+1} ---\n{text[:20000]}\n\n"
-        
     evaluation = state.get("evaluation", "")
+    text_content = retrieve_relevant_context(evaluation, k=10)
     
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are an expert Retriever. The previous evaluation flagged missing info or inconsistencies. Re-read the original texts and extract the missing methodologies or clear up the contradictions mentioned in the evaluation."),
-        ("human", "Evaluation raising concerns:\n{evaluation}\n\nOriginal Papers:\n{pdf_texts}")
+        ("system", "You are an expert Retriever. The previous evaluation flagged missing info or inconsistencies. Extract the missing methodologies or clear up the contradictions mentioned in the evaluation."),
+        ("human", "Evaluation raising concerns:\n{evaluation}\n\nSearch Vector Context:\n{pdf_texts}")
     ])
     chain = prompt | llm
-    response = chain.invoke({"evaluation": evaluation, "pdf_texts": combined_texts})
+    response = chain.invoke({"evaluation": evaluation, "pdf_texts": text_content})
     return {"retrieved_context": response.content}
 
 def synthesizer_node(state: AgentState):
@@ -163,6 +169,9 @@ def prompt_analyzer(state: AgentState):
     working_document = state.get("working_document", "")
     synthesis = state.get("synthesis", "")
     
+    # Vector DB Search context based on user prompt!
+    search_context = retrieve_relevant_context(user_prompt, k=8)
+    
     # Format chat history
     history_text = ""
     for msg in chat_history:
@@ -170,7 +179,7 @@ def prompt_analyzer(state: AgentState):
         content = msg.get("content", "")
         history_text += f"{role.capitalize()}: {content}\n"
     
-    sys_msg = "You are a helpful research assistant named ResearchAssist. Answer the user's question based on the provided document context and the previous synthesis.\nIf the user asks for a flowchart or visual diagram, use your request_flowchart tool.\n\nContext:\n{working_document}\n\nSynthesis:\n{synthesis}\n\nChat History:\n{history_text}"
+    sys_msg = "You are a helpful research assistant named ResearchAssist. Answer the user's question based on the provided document context, vector search results, and previous synthesis.\nIf the user asks for a flowchart or visual diagram, use your request_flowchart tool.\n\nOverarching Context:\n{working_document}\n\nTargeted Vector Search Context:\n{search_context}\n\nSynthesis:\n{synthesis}\n\nChat History:\n{history_text}"
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", sys_msg),
@@ -179,6 +188,7 @@ def prompt_analyzer(state: AgentState):
     chain = prompt | llm.bind_tools([request_flowchart])
     response = chain.invoke({
         "working_document": working_document,
+        "search_context": search_context,
         "synthesis": synthesis,
         "history_text": history_text,
         "user_prompt": user_prompt

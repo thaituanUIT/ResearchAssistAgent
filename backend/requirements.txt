@@ -8,3 +8,7 @@ langchain-core
 pypdf
 python-multipart
 langchain-text-splitters
+langchain-pinecone
+pinecone-client
+sentence-transformers
+langchain-huggingface

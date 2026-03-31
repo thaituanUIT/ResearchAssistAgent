@@ -1,7 +1,8 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from backend.pdf_utils import extract_text_from_pdf
+from backend.pdf_utils import get_pdf_chunks, extract_paper_metadata
+from backend.vector_store import add_paper_to_db
 from backend.agent import app_graph
 import uvicorn
 import os
@@ -34,17 +35,22 @@ async def upload_pdf(files: List[UploadFile] = File(...), user_prompt: str = For
         raise HTTPException(status_code=400, detail="No files uploaded")
         
     try:
-        pdf_texts = []
+        paper_metadatas = []
         for file in files:
             if not file.filename.endswith(".pdf"):
                 raise HTTPException(status_code=400, detail="Only PDF files are allowed")
             pdf_bytes = await file.read()
-            text = extract_text_from_pdf(pdf_bytes)
-            pdf_texts.append(text)
+            
+            chunks, first_page = get_pdf_chunks(pdf_bytes)
+            metadata = extract_paper_metadata(first_page)
+            
+            # Persist textual chunks directly into Pinecone DB
+            add_paper_to_db(chunks, metadata)
+            paper_metadatas.append(metadata)
         
         # We start the graph
         initial_state = {
-            "pdf_texts": pdf_texts, 
+            "paper_metadata": paper_metadatas, 
             "user_prompt": user_prompt,
             "route": "",
             "working_document": "",
