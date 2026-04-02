@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import Sidebar from './components/Sidebar';
+import SessionSidebar from './components/SessionSidebar';
 import ChatWindow from './components/ChatWindow';
 import ChatInput from './components/ChatInput';
 import Auth from './components/Auth';
@@ -213,11 +214,6 @@ function App() {
       )}
       
       <Sidebar 
-        sessions={sessions}
-        activeSession={activeSession}
-        onSelectSession={selectSession}
-        onNewSession={token ? createNewSession : clearGuestChat}
-        onLogout={handleLogout}
         files={files}
         loading={loading}
         error={error}
@@ -226,8 +222,6 @@ function App() {
         handleChange={handleChange}
         handleDrop={handleDrop}
         removeFile={removeFile}
-        username={token ? user?.username : 'Guest'}
-        isGuest={!token}
       />
 
       <main className="main-content" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -256,6 +250,16 @@ function App() {
           placeholder="Ask a question, or search Google Scholar..."
         />
       </main>
+
+      <SessionSidebar 
+        sessions={sessions}
+        activeSession={activeSession}
+        onSelectSession={selectSession}
+        onNewSession={token ? createNewSession : clearGuestChat}
+        onLogout={handleLogout}
+        username={token ? user?.username : 'Guest'}
+        isGuest={!token}
+      />
     </div>
   );
 }
