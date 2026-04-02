@@ -4,34 +4,32 @@ ResearchAssist is a prototype AI agent designed to ingest PDF research papers an
 
 ## Key Features
 
-- **Multi-Paper Ingestion**: Upload one or multiple PDF research papers simultaneously.
-- **Conditional LangGraph Workflow**: A dynamic graph architecture handles the routing logic:
-  - **Planner**: Maps out an extraction strategy based on the documents.
-  - **Reader / Comparator**: Reads individual papers or compares multiple papers for similarities and contrasts.
-  - **Evaluator**: Analyzes reliability, strengths, and weaknesses of arguments.
-  - **Confidence Router**: Performs specialized checks and decides if further external retrieval is needed.
-  - **Retriever / Synthesizer**: Generates the final, comprehensive report and user dashboard.
+- **Real-Time RAG (Retrieval-Augmented Generation)**: Upload one or multiple PDF research papers which are instantly ingested into a Pinecone Vector Database. Chat synchronously the moment files are dropped.
+- **Dynamic LangGraph Workflow**: A smart routing architecture designed to streamline queries seamlessly:
+  - **Prompt Analyzer**: Serves as your chatbot, utilizing vector retrieval and context to answer questions on existing papers.
+  - **Searcher Agent**: Connects live to Google Scholar (via SerpAPI) to pull parameters and scan external databases on demand.
+  - **Search Evaluator**: Critiques the clarity and reliability of incoming Google Scholar snippets prior to UI rendering.
+  - **Flowchart Agent**: An internal MCP-like sub-agent triggering dynamically when users request visual diagrams.
 - **FastAPI Backend**: A robust and asynchronous Python backend powered by FastAPI, Langchain, and Groq.
-- **React + Vite Frontend**: A modern, sleek user interface built with ReactJS for seamless interaction.
+- **React + Vite Frontend**: A modern, sleek chat-centric interface built with ReactJS to facilitate interactive dropzones.
 
 ## Architecture
 
-The AI agent's logic is structured as a complex state graph to handle a variety of condition-based analysis tasks:
+The AI agent's logic leverages a hyper-optimized state graph specifically tuned for instantaneous conversational responses and external API orchestration:
 
 ```mermaid
 graph TD
-    A[Planner] --> B[Condition Router]
-    B -->|Simple| C[Reader]
-    B -->|Complex| D[Comparator]
-    C --> H[Synthesizer]
-    D --> E[Evaluator]
-    E --> F[Confidence Check]
-    F -->|Low Confidence| G[Retriever]
-    F -->|High Confidence| H[Synthesizer]
-    G --> H
+    A[User Chat Message] --> B[Input Router]
+    B -->|Local Question| C[Prompt Analyzer]
+    B -->|Find New Papers| D[Searcher Node]
+    C -->|If Chart Requested| E[Flowchart Tool Graph]
+    E --> C
+    D --> F[Search Evaluator]
+    F --> G[End]
+    C --> G
 ```
 
-Also, our Agent has a tool to generate flowchart from the paper.
+Also, our Agent has a MCP tool to generate flowcharts seamlessly from the paper.
 
 ```mermaid
 graph TD
@@ -46,6 +44,8 @@ D --> E[Flowchart]
 - **Node.js** (v18+ recommended)
 - **Python** (3.9+)
 - **Groq LLM**: LLM inference is powered by `langchain-groq`.
+- **Pinecone**: Standard vector similarity engine.
+- **SerpAPI**: Real-time Google Scholar web integration.
 
 ## Getting Started
 
@@ -53,8 +53,11 @@ D --> E[Flowchart]
 Set up your environment variables based on the template:
 
 ```bash
-# In the root directory, configure your Groq API key in the .env file
-echo "GROQ_API_KEY=YOUR_API_KEY_HERE" > .env
+# In the root directory, configure your API keys in the .env file
+echo "GROQ_API_KEY=YOUR_GROQ_KEY
+PINECONE_API_KEY=YOUR_PINECONE_KEY
+PINECONE_INDEX_NAME=researchassist-index
+SERPAPI_API_KEY=YOUR_SERPAPI_KEY" > .env
 ```
 
 ### 2. Backend Setup
