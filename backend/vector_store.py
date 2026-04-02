@@ -40,6 +40,22 @@ def add_paper_to_db(chunks: list, metadata: dict):
     metadatas = [metadata for _ in chunks]
     vectorstore.add_texts(texts=chunks, metadatas=metadatas)
 
+def add_chat_to_db(message: str, user_id: str, session_id: str, role: str):
+    """Embeds a chat message and inserts it into Pinecone with memory metadata."""
+    if not message or not message.strip():
+        return
+    try:
+        vectorstore = get_vector_store()
+        metadata = {
+            "user_id": user_id,
+            "session_id": session_id,
+            "role": role,
+            "type": "chat_memory"
+        }
+        vectorstore.add_texts(texts=[message], metadatas=[metadata])
+    except Exception as e:
+        print(f"Error indexing chat memory: {e}")
+
 def retrieve_relevant_context(query: str, k: int = 5, filter_dict: dict = None) -> str:
     """Retrieves relevant chunks from the vector store based on query. Optionally filter by metadata."""
     try:

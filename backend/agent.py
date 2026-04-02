@@ -18,6 +18,8 @@ class AgentState(TypedDict, total=False):
     chat_history: List[dict]
     search_results: str
     chat_response: str
+    user_id: str
+    session_id: str
 
 # Use mixtral for its larger 32k context window on Groq
 llm = ChatGroq(model="mixtral-8x7b-32768")
@@ -52,9 +54,13 @@ def prompt_analyzer(state: AgentState):
     """Analyzes the user prompt using vector context and chat history."""
     user_prompt = state.get("user_prompt", "")
     chat_history = state.get("chat_history", [])
+    user_id = state.get("user_id", "")
+    
+    # Secure vector filtering to only look at user's personal context and papers
+    filter_dict = {"user_id": {"$eq": user_id}} if user_id else None
     
     # Vector DB Search context based on user prompt!
-    search_context = retrieve_relevant_context(user_prompt, k=8)
+    search_context = retrieve_relevant_context(user_prompt, k=8, filter_dict=filter_dict)
     
     # Format chat history
     history_text = ""

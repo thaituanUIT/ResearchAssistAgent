@@ -12,6 +12,8 @@ from typing import Dict, Any, List
 class ChatRequest(BaseModel):
     user_prompt: str
     chat_history: List[Dict[str, str]] = []
+    user_id: str
+    session_id: str
 
 app = FastAPI(title="ResearchAssist API")
 
@@ -28,7 +30,7 @@ def read_root():
     return {"message": "ResearchAssist API is running"}
 
 @app.post("/upload")
-async def upload_pdf(files: List[UploadFile] = File(...)):
+async def upload_pdf(files: List[UploadFile] = File(...), user_id: str = Form(...)):
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
         
@@ -41,6 +43,8 @@ async def upload_pdf(files: List[UploadFile] = File(...)):
             
             chunks, first_page = get_pdf_chunks(pdf_bytes)
             metadata = extract_paper_metadata(first_page)
+            metadata["user_id"] = user_id
+            metadata["type"] = "document"
             
             # Persist textual chunks directly into Pinecone DB
             add_paper_to_db(chunks, metadata)
@@ -59,9 +63,21 @@ async def chat_endpoint(req: ChatRequest):
     try:
         initial_state = {
             "user_prompt": req.user_prompt,
-            "chat_history": req.chat_history
+            "chat_history": req.chat_history,
+            "user_id": req.user_id,
+            "session_id": req.session_id
         }
         result = app_graph.invoke(initial_state)
+        
+        # After inference completes, silently add user and agent responses to memory index
+        try:
+            if not req.user_id.startswith("guest_"):
+                from backend.vector_store import add_chat_to_db
+                add_chat_to_db(req.user_prompt, req.user_id, req.session_id, "user")
+                add_chat_to_db(result.get("chat_response", ""), req.user_id, req.session_id, "agent")
+        except Exception as vec_e:
+            print("Failed to save vector memory:", vec_e)
+            
         return {"chat_response": result.get("chat_response", "")}
     except Exception as e:
         print(f"Error during chat: {e}")
