@@ -12,8 +12,6 @@ from typing import Dict, Any, List
 class ChatRequest(BaseModel):
     user_prompt: str
     chat_history: List[Dict[str, str]] = []
-    working_document: str = ""
-    synthesis: str = ""
 
 app = FastAPI(title="ResearchAssist API")
 
@@ -30,7 +28,7 @@ def read_root():
     return {"message": "ResearchAssist API is running"}
 
 @app.post("/upload")
-async def upload_pdf(files: List[UploadFile] = File(...), user_prompt: str = Form("")):
+async def upload_pdf(files: List[UploadFile] = File(...)):
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
         
@@ -48,25 +46,9 @@ async def upload_pdf(files: List[UploadFile] = File(...), user_prompt: str = For
             add_paper_to_db(chunks, metadata)
             paper_metadatas.append(metadata)
         
-        # We start the graph
-        initial_state = {
-            "paper_metadata": paper_metadatas, 
-            "user_prompt": user_prompt,
-            "route": "",
-            "working_document": "",
-            "evaluation": "", 
-            "confidence_level": "",
-            "retrieved_context": "",
-            "synthesis": ""
-        }
-        result = app_graph.invoke(initial_state)
-        
         return {
-            "route": result.get("route", ""),
-            "confidence_level": result.get("confidence_level", ""),
-            "retrieved_context": result.get("retrieved_context", ""),
-            "synthesis": result.get("synthesis", ""),
-            "working_document": result.get("working_document", "")
+            "status": "success",
+            "indexed_papers": paper_metadatas
         }
     except Exception as e:
         print(f"Error during processing: {e}")
@@ -77,9 +59,7 @@ async def chat_endpoint(req: ChatRequest):
     try:
         initial_state = {
             "user_prompt": req.user_prompt,
-            "chat_history": req.chat_history,
-            "working_document": req.working_document,
-            "synthesis": req.synthesis
+            "chat_history": req.chat_history
         }
         result = app_graph.invoke(initial_state)
         return {"chat_response": result.get("chat_response", "")}

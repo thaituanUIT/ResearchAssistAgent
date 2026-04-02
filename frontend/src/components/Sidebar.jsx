@@ -9,8 +9,7 @@ const Sidebar = ({
   onButtonClick, 
   handleChange, 
   handleDrop, 
-  removeFile, 
-  handleAnalyze,
+  removeFile,
   uploadInstruction,
   setUploadInstruction
 }) => {
@@ -68,13 +67,6 @@ const Sidebar = ({
         />
       </div>
 
-      <button 
-        className="btn-primary full-width mt-auto" 
-        onClick={handleAnalyze} 
-        disabled={files.length === 0 || loading}
-      >
-        {loading ? "Analyzing..." : "Analyze Papers"}
-      </button>
     </aside>
   );
 };

@@ -15,12 +15,6 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [inputVal, setInputVal] = useState('');
   const [isChatting, setIsChatting] = useState(false);
-  
-  // Context state from original upload
-  const [documentContext, setDocumentContext] = useState({
-    working_document: '',
-    synthesis: ''
-  });
 
   const fileInputRef = useRef(null);
 
@@ -32,6 +26,10 @@ function App() {
       setError(null);
     }
     setFiles(prev => [...prev, ...validFiles]);
+    
+    if (validFiles.length > 0) {
+      performUpload(validFiles);
+    }
   };
 
   const handleDrop = (e) => {
@@ -49,26 +47,21 @@ function App() {
   
   const onButtonClick = () => fileInputRef.current.click();
 
-  const handleAnalyze = async () => {
-    if (files.length === 0) return;
+  const performUpload = async (pdfFiles) => {
     setLoading(true);
     setError(null);
-    setMessages([]);
     
     try {
-      const data = await uploadPapers(files, uploadInstruction);
-      setDocumentContext({
-        working_document: data.working_document || '',
-        synthesis: data.synthesis || ''
-      });
-      setMessages([
+      await uploadPapers(pdfFiles);
+      setMessages(prev => [
+        ...prev,
         { 
           role: 'agent', 
-          content: `**Analysis Complete!**\n\nThe papers have been parsed. I generated a final synthesis report.\n\n--- \n ${data.synthesis}\n\n--- \n Feel free to ask me any questions regarding the uploaded documents.` 
+          content: `**Successfully Indexed Documents!**\n\nI have securely processed and vectorized your uploaded papers. Feel free to ask me anything about them, or ask me to search Google Scholar for additional external context!` 
         }
       ]);
     } catch (err) {
-      setError(err?.response?.data?.detail || "An error occurred during analysis.");
+      setError(err?.response?.data?.detail || "An error occurred during indexing.");
     } finally {
       setLoading(false);
     }
@@ -88,9 +81,7 @@ function App() {
     try {
       const data = await sendChatMessage(
         newUserMsg.content,
-        currentMessages,
-        documentContext.working_document,
-        documentContext.synthesis
+        currentMessages
       );
       
       setMessages(prev => [...prev, { role: 'agent', content: data.chat_response }]);
@@ -112,7 +103,6 @@ function App() {
         handleChange={handleChange}
         handleDrop={handleDrop}
         removeFile={removeFile}
-        handleAnalyze={handleAnalyze}
         uploadInstruction={uploadInstruction}
         setUploadInstruction={setUploadInstruction}
       />
@@ -126,8 +116,8 @@ function App() {
           inputVal={inputVal}
           setInputVal={setInputVal}
           handleChat={handleChat}
-          disabled={!documentContext.synthesis || isChatting}
-          placeholder={documentContext.synthesis ? "Ask a question about your papers..." : "Upload and analyze papers first..."}
+          disabled={isChatting}
+          placeholder="Ask a question about your papers, or search Scholar..."
         />
       </main>
     </div>

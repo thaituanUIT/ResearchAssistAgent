@@ -22,8 +22,8 @@ def generate_flowchart(nodes: List[str], edges: List[List[str]]) -> str:
     s += "```"
     return s
 
-def search_scholar_api(query: str, scisbd: str = "0") -> str:
-    """Takes a query and sort parameter (0 for relevance, 1 for date) and calls SerpAPI."""
+def search_scholar_api(query: str, scisbd: str = "0", num: int = 5) -> str:
+    """Takes a query and sort parameter (0 for relevance, 1 for date), and number of results and calls SerpAPI."""
     api_key = os.environ.get("SERPAPI_API_KEY")
     if not api_key:
         return "**Error:** SERPAPI_API_KEY is not configured in the `.env` file! Please add it to search Google Scholar."
@@ -32,7 +32,7 @@ def search_scholar_api(query: str, scisbd: str = "0") -> str:
         "engine": "google_scholar",
         "q": query,
         "api_key": api_key,
-        "num": 5
+        "num": num
     }
     if scisbd == "1":
         params["scisbd"] = "1"
@@ -46,10 +46,10 @@ def search_scholar_api(query: str, scisbd: str = "0") -> str:
         if not organic:
             return "No relevant papers found on Google Scholar for that query."
             
-        top_5 = organic[:5]
+        top_n = organic[:num]
         
-        out = f"Here are {len(top_5)} papers that are relevant:\n\n"
-        for i, res in enumerate(top_5):
+        out = f"Here are {len(top_n)} papers that are relevant:\n\n"
+        for i, res in enumerate(top_n):
             title = res.get("title", "Unknown Title")
             link = res.get("link", "#")
             snippet = res.get("snippet", "")
