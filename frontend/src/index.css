@@ -375,6 +375,15 @@ body {
   color: #a5b4fc;
 }
 
+.agent-trace {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  margin: -0.25rem 0 0.75rem;
+  overflow-wrap: anywhere;
+  opacity: 0.85;
+}
+
 /* Input Area */
 .input-area {
   padding: 1.5rem 2rem;
@@ -575,97 +584,4 @@ body {
   background: var(--bg-secondary);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   height: 60px;
-}
-
-/* Auth Modal Element */
-.auth-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.auth-modal-container {
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-  padding: 3rem;
-  border-radius: 20px;
-  width: 100%;
-  max-width: 400px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  text-align: center;
-  position: relative;
-}
-
-.auth-modal-close {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: color 0.2s;
-  padding: 5px;
-}
-.auth-modal-close:hover {
-  color: white;
-}
-
-.auth-subtitle {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  margin-bottom: 2rem;
-}
-
-.auth-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  margin-bottom: 0.5rem;
-}
-
-.auth-input {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--glass-border);
-  padding: 1rem 1rem;
-  border-radius: 12px;
-  color: var(--text-primary);
-  font-family: inherit;
-  outline: none;
-  transition: all 0.2s;
-  font-size: 1rem;
-}
-
-.auth-input:focus {
-  border-color: rgba(99, 102, 241, 0.5);
-  box-shadow: 0 0 15px rgba(99, 102, 241, 0.15);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.auth-toggle {
-  margin-top: 1.5rem;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-}
-
-.auth-toggle span {
-  color: var(--accent-primary);
-  cursor: pointer;
-  font-weight: 600;
-  transition: color 0.2s;
-}
-.auth-toggle span:hover {
-  text-decoration: underline;
-  color: #d946ef;
 }

@@ -1,16 +1,20 @@
 import os
+from functools import lru_cache
 from pinecone import Pinecone, ServerlessSpec
 from langchain_pinecone import PineconeVectorStore
-from langchain_huggingface import HuggingFaceEmbeddings
+from backend.services.embeddings import OpenRouterEmbeddings
 import dotenv
 
 dotenv.load_dotenv()
 
-# Using HuggingFace MiniLM for 384-dimensional embeddings (compact and extremely fast locally)
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-
 pc = Pinecone(api_key=os.environ.get("PINECONE_API_KEY", "dummy-key-replace-me"))
 INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "researchassist-index")
+EMBEDDING_DIMENSIONS = int(os.environ.get("OPENROUTER_EMBEDDING_DIMENSIONS", "384"))
+
+
+@lru_cache(maxsize=1)
+def get_embeddings():
+    return OpenRouterEmbeddings()
 
 def get_vector_store():
     try:
@@ -18,7 +22,7 @@ def get_vector_store():
         if INDEX_NAME not in pc.list_indexes().names():
             pc.create_index(
                 name=INDEX_NAME,
-                dimension=384,
+                dimension=EMBEDDING_DIMENSIONS,
                 metric="cosine",
                 spec=ServerlessSpec(
                     cloud="aws",
@@ -28,7 +32,7 @@ def get_vector_store():
     except Exception as e:
         print(f"Warning during Pinecone init: {e}")
         
-    return PineconeVectorStore(index=pc.Index(INDEX_NAME), embedding=embeddings)
+    return PineconeVectorStore(index=pc.Index(INDEX_NAME), embedding=get_embeddings())
 
 def add_paper_to_db(chunks: list, metadata: dict):
     """Embeds textual chunks and inserts them into Pinecone along with document metadata."""

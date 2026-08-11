@@ -1,4 +1,6 @@
 .env
+__pycache__/
+*.pyc
 graph.md
 implementation_plan.md
 task.md

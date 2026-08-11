@@ -1,9 +1,9 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from backend.pdf_utils import get_pdf_chunks, extract_paper_metadata
-from backend.vector_store import add_paper_to_db
-from backend.agent import app_graph
+from backend.services.pdf_utils import get_pdf_chunks, extract_paper_metadata
+from backend.services.vector_store import add_paper_to_db
+from backend.graph import app_graph
 import uvicorn
 import os
 from typing import Dict, Any, List
@@ -69,16 +69,19 @@ async def chat_endpoint(req: ChatRequest):
         }
         result = app_graph.invoke(initial_state)
         
-        # After inference completes, silently add user and agent responses to memory index
+        # After inference completes, add user and agent responses to vector memory.
         try:
-            if not req.user_id.startswith("guest_"):
-                from backend.vector_store import add_chat_to_db
-                add_chat_to_db(req.user_prompt, req.user_id, req.session_id, "user")
-                add_chat_to_db(result.get("chat_response", ""), req.user_id, req.session_id, "agent")
+            from backend.services.vector_store import add_chat_to_db
+            add_chat_to_db(req.user_prompt, req.user_id, req.session_id, "user")
+            add_chat_to_db(result.get("chat_response", ""), req.user_id, req.session_id, "agent")
         except Exception as vec_e:
             print("Failed to save vector memory:", vec_e)
             
-        return {"chat_response": result.get("chat_response", "")}
+        return {
+            "chat_response": result.get("chat_response", ""),
+            "active_agents": result.get("active_agents", []),
+            "intent": result.get("intent", ""),
+        }
     except Exception as e:
         print(f"Error during chat: {e}")
         raise HTTPException(status_code=500, detail=str(e))

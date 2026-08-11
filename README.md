@@ -5,12 +5,15 @@ ResearchAssist is a prototype AI agent designed to ingest PDF research papers an
 ## Key Features
 
 - **Real-Time RAG (Retrieval-Augmented Generation)**: Upload one or multiple PDF research papers which are instantly ingested into a Pinecone Vector Database. Chat synchronously the moment files are dropped.
-- **Dynamic LangGraph Workflow**: A smart routing architecture designed to streamline queries seamlessly:
-  - **Prompt Analyzer**: Serves as your chatbot, utilizing vector retrieval and context to answer questions on existing papers.
-  - **Searcher Agent**: Connects live to Google Scholar (via SerpAPI) to pull parameters and scan external databases on demand.
-  - **Search Evaluator**: Critiques the clarity and reliability of incoming Google Scholar snippets prior to UI rendering.
-  - **Flowchart Agent**: An internal MCP-like sub-agent triggering dynamically when users request visual diagrams.
-- **FastAPI Backend**: A robust and asynchronous Python backend powered by FastAPI, Langchain, and Groq.
+- **Dynamic LangGraph Multi-Agent Workflow**: A supervisor routes requests through specialized agents:
+  - **Document RAG Agent**: Retrieves user-scoped PDF and chat memory context from Pinecone.
+  - **Scholar Search Agent**: Connects live to Google Scholar via SerpAPI for external paper discovery.
+  - **Paper Comparison Agent**: Compares papers across methods, findings, limitations, and implications.
+  - **Summary Agent**: Produces research-focused summaries from retrieved paper context.
+  - **Flowchart Agent**: Generates Mermaid diagrams through a dedicated extraction subgraph.
+  - **Critic Agent**: Checks grounding, clarity, and overclaiming before final composition.
+- **OpenRouter Model Gateway**: Uses OpenRouter-compatible chat models through `langchain-openai`.
+- **FastAPI Backend**: A robust and asynchronous Python backend powered by FastAPI, LangChain, and LangGraph.
 - **React + Vite Frontend**: A modern, sleek chat-centric interface built with ReactJS to facilitate interactive dropzones.
 
 ## Architecture
@@ -19,14 +22,21 @@ The AI agent's logic leverages a hyper-optimized state graph specifically tuned 
 
 ```mermaid
 graph TD
-    A[User Chat Message] --> B[Input Router]
-    B -->|Local Question| C[Prompt Analyzer]
-    B -->|Find New Papers| D[Searcher Node]
-    C -->|If Chart Requested| E[Flowchart Tool Graph]
-    E --> C
-    D --> F[Search Evaluator]
-    F --> G[End]
-    C --> G
+    A[User Chat Message] --> B[Supervisor Agent]
+    B -->|Uploaded PDFs / chat memory| C[Retriever]
+    C --> D[Document RAG Agent]
+    C --> E[Paper Comparison Agent]
+    C --> F[Summary Agent]
+    C --> G[Flowchart Agent]
+    B -->|Find external papers| H[Scholar Search Agent]
+    H --> I[Scholar Evaluator]
+    D --> J[Critic Agent]
+    E --> J
+    F --> J
+    G --> J
+    I --> K[Response Composer]
+    J --> K
+    K --> L[Final Answer]
 ```
 
 Also, our Agent has a MCP tool to generate flowcharts seamlessly from the paper.
@@ -43,7 +53,7 @@ D --> E[Flowchart]
 
 - **Node.js** (v18+ recommended)
 - **Python** (3.9+)
-- **Groq LLM**: LLM inference is powered by `langchain-groq`.
+- **OpenRouter**: LLM inference is powered by OpenRouter model slugs through `langchain-openai`.
 - **Pinecone**: Standard vector similarity engine.
 - **SerpAPI**: Real-time Google Scholar web integration.
 
@@ -53,12 +63,10 @@ D --> E[Flowchart]
 Set up your environment variables based on the template:
 
 ```bash
-# In the root directory, configure your API keys in the .env file
-echo "GROQ_API_KEY=YOUR_GROQ_KEY
-PINECONE_API_KEY=YOUR_PINECONE_KEY
-PINECONE_INDEX_NAME=researchassist-index
-SERPAPI_API_KEY=YOUR_SERPAPI_KEY" > .env
+cp .env.example .env
 ```
+
+Then edit `.env` with your OpenRouter, Pinecone, SerpAPI, and optional Cloudflare Tunnel token values.
 
 ### 2. Backend Setup
 Set up a Python virtual environment and install backend dependencies:
@@ -91,8 +99,26 @@ npm run dev
 ```
 The React development server will start, typically accessible at `http://localhost:5173`.
 
+### 4. Docker Setup
+Build and run the app locally with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+The production frontend will be served at `http://localhost:8080`. Nginx proxies frontend `/api/*` requests to the FastAPI backend container.
+
+To run through Cloudflare Tunnel, create a tunnel in Cloudflare Zero Trust, configure the public hostname service to `http://frontend:80`, add the generated token to `.env`, then start:
+
+```bash
+docker compose --profile tunnel up --build -d
+```
+
+The `cloudflared` container uses `CLOUDFLARE_TUNNEL_TOKEN` and does not require exposing inbound ports on the host.
+
 ## Technologies
 
 - **Frontend**: ReactJS 19, Vite, Lucide Icons, Axios, React Markdown.
 - **Backend**: FastAPI, Uvicorn, Python Multipart, PyPDF.
-- **AI Engine**: LangGraph, Langchain, Langchain Groq SDK.
+- **Deployment**: Docker Compose, Nginx, Cloudflare Tunnel.
+- **AI Engine**: LangGraph, LangChain, OpenRouter via LangChain OpenAI SDK.

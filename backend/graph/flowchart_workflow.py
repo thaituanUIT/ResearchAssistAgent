@@ -1,15 +1,12 @@
 from typing import TypedDict, List
 from langgraph.graph import StateGraph, START, END
-from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
-from backend.tools import generate_flowchart
+from backend.services.tools import generate_flowchart
+from backend.core.llm import get_llm
 import dotenv
 
 dotenv.load_dotenv()
-
-# We need a model with good function calling. Mixtral handles structured output decently on Groq.
-llm = ChatGroq(model="mixtral-8x7b-32768")
 
 class FlowchartState(TypedDict, total=False):
     instruction: str
@@ -33,6 +30,7 @@ def step_extractor(state: FlowchartState):
         ("human", "Instruction: {instruction}\n\nContext block to analyze:\n{context}")
     ])
     
+    llm = get_llm("structured", temperature=0)
     chain = prompt | llm.with_structured_output(NodesOutput)
     response = chain.invoke({"instruction": state.get("instruction", ""), "context": state.get("context", "")[0:50000]})
     
@@ -47,6 +45,7 @@ def dependencies_extractor(state: FlowchartState):
         ("human", "Extracted Nodes: {nodes}\n\nContext block to analyze:\n{context}")
     ])
     
+    llm = get_llm("structured", temperature=0)
     chain = prompt | llm.with_structured_output(EdgesOutput)
     response = chain.invoke({"nodes": state.get("nodes", []), "context": state.get("context", "")[0:50000]})
     

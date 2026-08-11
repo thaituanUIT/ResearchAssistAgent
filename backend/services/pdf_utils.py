@@ -1,15 +1,13 @@
 import pypdf
 import io
 import uuid
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_groq import ChatGroq
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
+from backend.core.llm import get_llm
 import dotenv
 
 dotenv.load_dotenv()
-
-llm = ChatGroq(model="mixtral-8x7b-32768")
 
 class PaperMetadata(BaseModel):
     paper_title: str = Field(description="The title of the paper.")
@@ -23,6 +21,7 @@ def extract_paper_metadata(first_page_text: str) -> dict:
         ("system", sys_msg),
         ("human", "First page text:\n{first_page_text}")
     ])
+    llm = get_llm("structured", temperature=0)
     chain = prompt | llm.with_structured_output(PaperMetadata)
     try:
         res = chain.invoke({"first_page_text": first_page_text[:4000]})

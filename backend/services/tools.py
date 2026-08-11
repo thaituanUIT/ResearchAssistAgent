@@ -16,9 +16,8 @@ def generate_flowchart(nodes: List[str], edges: List[List[str]]) -> str:
         safe_n = str(n).replace('"', "'").replace('\n', ' ')
         s += f'{i}["{safe_n}"]\n'
     for a, b in edges:
-        try:
+        if a in nodes and b in nodes:
             s += f"{nodes.index(a)} --> {nodes.index(b)}\n"
-            pass
     s += "```"
     return s
 

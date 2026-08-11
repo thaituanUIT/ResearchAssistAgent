@@ -3,13 +3,12 @@ uvicorn
 langgraph
 langgraph-checkpoint
 langchain
-langchain-groq
+langchain-openai
 langchain-core
 pypdf
 python-multipart
+python-dotenv
 langchain-text-splitters
 langchain-pinecone
 pinecone-client
-sentence-transformers
-langchain-huggingface
 requests

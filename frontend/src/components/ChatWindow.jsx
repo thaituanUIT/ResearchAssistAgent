@@ -31,12 +31,17 @@ const ChatWindow = ({ messages, isChatting }) => {
                 <div className="message-sender">
                   {msg.role === 'agent' ? 'ResearchAssist' : 'You'}
                 </div>
+                {msg.role === 'agent' && msg.activeAgents?.length > 0 && (
+                  <div className="agent-trace">
+                    {msg.activeAgents.join(' -> ')}
+                  </div>
+                )}
                 <div className="markdown-body">
                   {msg.role === 'agent' ? (
                     <ReactMarkdown
                       rehypePlugins={[rehypeRaw]}
                       components={{
-                        code({ node, inline, className, children, ...props }) {
+                        code({ inline, className, children, ...props }) {
                           const match = /language-(\w+)/.exec(className || '');
                           if (!inline && match && match[1] === 'mermaid') {
                             return <Mermaid chart={String(children).replace(/\n$/, '')} />;
