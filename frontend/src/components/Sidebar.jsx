@@ -1,5 +1,5 @@
 import React from 'react';
-import { UploadCloud, FileText, X } from 'lucide-react';
+import { Cloud, Cpu, FileText, Server, UploadCloud, X } from 'lucide-react';
 
 const Sidebar = ({ 
   files, 
@@ -9,12 +9,31 @@ const Sidebar = ({
   onButtonClick, 
   handleChange, 
   handleDrop, 
-  removeFile
+  removeFile,
+  modelStatus
 }) => {
+  const isLocal = modelStatus?.provider === 'local';
+  const isConnected = modelStatus?.status === 'connected' || modelStatus?.status === 'not_checked';
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
         <h2>Auto Indexing</h2>
+      </div>
+
+      <div className="model-panel">
+        <div className="model-panel-title">
+          {isLocal ? <Cpu size={18} /> : <Cloud size={18} />}
+          <span>{isLocal ? 'Local Model' : 'Cloud Model'}</span>
+        </div>
+        <div className="model-name">{modelStatus?.model || 'Checking model...'}</div>
+        {modelStatus?.base_url && (
+          <div className="model-url">{modelStatus.base_url}</div>
+        )}
+        <div className={`model-status ${isConnected ? 'ok' : 'error'}`}>
+          <Server size={14} />
+          <span>{modelStatus?.status || 'checking'}</span>
+        </div>
       </div>
 
       <div 

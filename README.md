@@ -13,6 +13,8 @@ ResearchAssist is a prototype AI agent designed to ingest PDF research papers an
   - **Flowchart Agent**: Generates Mermaid diagrams through a dedicated extraction subgraph.
   - **Critic Agent**: Checks grounding, clarity, and overclaiming before final composition.
 - **OpenRouter Model Gateway**: Uses OpenRouter-compatible chat models through `langchain-openai`.
+- **Bring Your Own Local Model**: Switch the agent runtime to any OpenAI-compatible local chat server, including a Soup-served fine-tuned model.
+- **Fine-tuning Notebook**: Includes a Soup notebook and training config for a fresher-friendly local model fine-tuning workflow.
 - **FastAPI Backend**: A robust and asynchronous Python backend powered by FastAPI, LangChain, and LangGraph.
 - **React + Vite Frontend**: A modern, sleek chat-centric interface built with ReactJS to facilitate interactive dropzones.
 
@@ -54,6 +56,7 @@ D --> E[Flowchart]
 - **Node.js** (v18+ recommended)
 - **Python** (3.9+)
 - **OpenRouter**: LLM inference is powered by OpenRouter model slugs through `langchain-openai`.
+- **Optional local model server**: Soup, Ollama, LM Studio, vLLM, or any other OpenAI-compatible `/v1` chat API.
 - **Pinecone**: Standard vector similarity engine.
 - **SerpAPI**: Real-time Google Scholar web integration.
 
@@ -89,7 +92,45 @@ uvicorn backend.main:app --reload
 ```
 The FastAPI backend will start on `http://127.0.0.1:8000`.
 
-### 3. Frontend Setup
+### 3. Optional: Run Your Own Fine-tuned Local Model
+This repo includes a notebook for a fresher AI engineer pet-project story: collect research-assistant examples, fine-tune a small instruct model with Soup, serve it locally, and wire ResearchAssist to that model.
+
+Start with:
+
+```bash
+jupyter lab notebooks/soup_finetune_local_model.ipynb
+```
+
+The notebook uses:
+
+- `data/finetune/researchassist_sft_sample.jsonl` as the starter Alpaca-style SFT dataset.
+- `notebooks/soup_researchassist.yaml` as the Soup training config.
+- `models/researchassist-soup` as the local output folder.
+
+After training, serve the model with Soup:
+
+```bash
+soup serve --model ./models/researchassist-soup --host 127.0.0.1 --port 8001
+```
+
+Then switch `.env` to the local provider:
+
+```bash
+LLM_PROVIDER=local
+LOCAL_LLM_BASE_URL=http://127.0.0.1:8001/v1
+LOCAL_LLM_MODEL=researchassist-soup
+LOCAL_LLM_API_KEY=local-not-needed
+```
+
+If you run ResearchAssist through Docker Compose while Soup runs on your host machine, use:
+
+```bash
+LOCAL_LLM_BASE_URL=http://host.docker.internal:8001/v1
+```
+
+The frontend sidebar calls `/api/model` and shows the active provider, model name, base URL, and local connection status.
+
+### 4. Frontend Setup
 Open a new terminal, navigate to the frontend directory, and start the development server:
 
 ```bash
@@ -99,7 +140,7 @@ npm run dev
 ```
 The React development server will start, typically accessible at `http://localhost:5173`.
 
-### 4. Docker Setup
+### 5. Docker Setup
 Build and run the app locally with Docker Compose:
 
 ```bash
@@ -121,4 +162,4 @@ The `cloudflared` container uses `CLOUDFLARE_TUNNEL_TOKEN` and does not require 
 - **Frontend**: ReactJS 19, Vite, Lucide Icons, Axios, React Markdown.
 - **Backend**: FastAPI, Uvicorn, Python Multipart, PyPDF.
 - **Deployment**: Docker Compose, Nginx, Cloudflare Tunnel.
-- **AI Engine**: LangGraph, LangChain, OpenRouter via LangChain OpenAI SDK.
+- **AI Engine**: LangGraph, LangChain, OpenRouter, and OpenAI-compatible local model servers via LangChain OpenAI SDK.

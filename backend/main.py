@@ -5,8 +5,10 @@ from backend.services.pdf_utils import get_pdf_chunks, extract_paper_metadata
 from backend.services.vector_store import add_paper_to_db
 from backend.graph import app_graph
 import uvicorn
-import os
-from typing import Dict, Any, List
+import requests
+from typing import List
+
+from backend.core.llm import get_llm_runtime_config
 
 
 class ChatRequest(BaseModel):
@@ -28,6 +30,27 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"message": "ResearchAssist API is running"}
+
+@app.get("/model")
+def read_model_config():
+    config = get_llm_runtime_config()
+    status = "not_checked"
+    detail = ""
+
+    if config["provider"] == "local":
+        try:
+            response = requests.get(f"{config['base_url'].rstrip('/')}/models", timeout=3)
+            response.raise_for_status()
+            status = "connected"
+        except Exception as exc:
+            status = "unreachable"
+            detail = str(exc)
+
+    return {
+        **config,
+        "status": status,
+        "detail": detail,
+    }
 
 @app.post("/upload")
 async def upload_pdf(files: List[UploadFile] = File(...), user_id: str = Form(...)):

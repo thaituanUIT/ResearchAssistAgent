@@ -20,6 +20,7 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [inputVal, setInputVal] = useState('');
   const [isChatting, setIsChatting] = useState(false);
+  const [modelStatus, setModelStatus] = useState(null);
 
   const fileInputRef = useRef(null);
 
@@ -29,6 +30,23 @@ function App() {
     }
     setMessages([{ role: 'agent', content: "Welcome to ResearchAssist. Attach a PDF and ask a research question to start." }]);
   }, [guestId]);
+
+  useEffect(() => {
+    const loadModelStatus = async () => {
+      try {
+        const response = await axios.get('/api/model');
+        setModelStatus(response.data);
+      } catch {
+        setModelStatus({
+          provider: 'unknown',
+          model: 'Unavailable',
+          status: 'unreachable'
+        });
+      }
+    };
+
+    loadModelStatus();
+  }, []);
 
   const addFiles = (newFiles) => {
     const validFiles = Array.from(newFiles).filter(file => file.type === "application/pdf");
@@ -124,6 +142,7 @@ function App() {
         handleChange={handleChange}
         handleDrop={handleDrop}
         removeFile={removeFile}
+        modelStatus={modelStatus}
       />
 
       <main className="main-content" style={{ display: 'flex', flexDirection: 'column' }}>

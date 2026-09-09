@@ -22,3 +22,8 @@ export const sendChatMessage = async (userPrompt, chatHistory, userId, sessionId
   });
   return response.data;
 };
+
+export const getModelConfig = async () => {
+  const response = await axios.get(`${API_BASE_URL}/model`);
+  return response.data;
+};
