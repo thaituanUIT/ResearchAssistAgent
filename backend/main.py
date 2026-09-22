@@ -6,7 +6,7 @@ from backend.services.vector_store import add_paper_to_db
 from backend.graph import app_graph
 import uvicorn
 import requests
-from typing import List
+from typing import Dict, List
 
 from backend.core.llm import get_llm_runtime_config
 
